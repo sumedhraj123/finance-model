@@ -1,0 +1,24 @@
+version: '3.9'
+services:
+  ##Finance Service
+  delivery-service:
+    container_name: finance-service
+    image: 878666174159.dkr.ecr.ap-south-1.amazonaws.com/finance-service:${IMAGE_TAG}
+    ports:
+      - 
+    logging:
+      driver: awslogs
+      options:
+        awslogs-region: ap-south-1
+        awslogs-group: "/dev/app/bq-web/finance-service/"
+        awslogs-datetime-format: '\[%b %d, %Y %H:%M:%S\]'
+    environment:
+    
+    networks:
+      - backend
+    restart: always
+
+networks:
+  backend:
+    name: backend
+    external: true

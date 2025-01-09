@@ -1,0 +1,30 @@
+version: '3.9'
+
+services:
+  mongodb:
+    image: mongo:latest
+    container_name: consent_db
+    ports:
+      - '27017:27017'
+    environment:
+      STRIPE_SECRET_KEY: sk_test_nMu9k863efhkBREDlbzsowxK00MGqZpQP5
+      PORT: 3000
+      DB_USER: postgres
+      DB_HOST: localhost
+      DB_NAME: logs
+      DB_PASSWORD: example
+      DB_PORT: 5432
+      MONGO_URI: smongodb://mongo:27017/finance-service
+    volumes:
+      - ./mongo-data:/data/db
+    networks:
+      - backend
+
+volumes:
+  mongo-data:
+    driver: local
+
+networks:
+  backend:
+    name: backend
+    external: true
