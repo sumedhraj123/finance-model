@@ -1,0 +1,69 @@
+
+name: Build, push, and Deploy the Finance-Service
+
+on :
+  push:
+    branches:
+      - develop
+jobs:
+  build:
+    name: Build Finance-Service Backend
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+      
+    - name: Set up Docker Buildx 
+      uses: docker/setup-buildx-action@v3
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        aws-access-key-id: ${{ secrets.DEV_AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.DEV_AWS_SECRET_ACCESS_KEY }}
+        aws-region: ap-south-1
+
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2
+
+    - name: Build, tag, and push image to Amazon ECR
+      id: build-image
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        ECR_REPOSITORY: finance-service
+        IMAGE_TAG: ${{ github.sha }}
+      run: |
+        docker buildx inspect
+        docker buildx create --name appbuilder --driver docker-container --platform linux/arm64
+        docker buildx use appbuilder
+        docker buildx build --platform linux/arm64 --push -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+        echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+  deploy:
+    name: Deploy finance-Service Backend on Dev
+    runs-on: dev-services-runner-2
+    needs: build
+
+    steps:
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        aws-access-key-id: ${{ secrets.DEV_AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.DEV_AWS_SECRET_ACCESS_KEY }}
+        aws-region: ap-south-1
+
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2
+
+    - name: pull image from Amazon ECR
+      id: pull-image
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        ECR_REPOSITORY: finance-service
+        IMAGE_TAG: ${{ github.sha }}
+      run: |
+        docker pull $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+        # run pulled image
+        sh /home/ubuntu/scripts/finance-service/deploy-finance-service.sh  $IMAGE_TAG
